@@ -1,97 +1,159 @@
 from django.utils.text import slugify
-
-from dcim.choices import DeviceStatusChoices, SiteStatusChoices
-from dcim.models import Device, DeviceRole, DeviceType, Manufacturer, Site
-from extras.scripts import *
-from ipam.models import VLAN, VLANGroup, Role, Prefix
+from ipam.models import VLANGroup, VLAN, Role, Prefix
 from vpn.models import L2VPN, L2VPNTermination
-from tenancy.models import Tenant
-
+from extras.scripts import *
 
 class NewVXLANScript(Script):
 
     class Meta:
         name = "New VXLAN"
         description = "Provision a VXLAN"
-        field_order = ['site_name', 'switch_count', 'switch_model']
 
     vlan_group = ObjectVar(
-        description="Fabric",
+        description="Fabric of the new VXLAN",
+        label="Fabric",
         model=VLANGroup,
         required=True
     )
     
     l2vpn = ObjectVar(
-        description="Gateway",
+        description="Gateway (L2VPN)",
         model=L2VPN,
-        required=True
+        required=True,
+        query_params={
+            'cf_fabric': '$vlan_group'
+        }
     )
     
     description_vlan = StringVar(
-        description="Description of the new VXLAN"
+        description="Description du VLAN",
         required=False
     )
     
     vlan_mode = ChoiceVar(
         choices=(('auto', 'Auto'), ('manual', 'Manuel')),
         default='auto',
-        description="Mode de création du VXAN"
+        description="Mode de création du VLAN"
     )
     
-    '''site_name = StringVar(
-        description="Name of the new site"
+    manual_vlan_start = IntegerVar(
+        required=False, 
+        label="ID VLAN manuel"
     )
-    switch_count = IntegerVar(
-        description="Number of access switches to create"
+    
+    subnet = StringVar(
+        required=False, 
+        label="Subnet CIDR"
     )
-    manufacturer = ObjectVar(
-        model=Manufacturer,
-        required=False
+    
+    vlan_role = ObjectVar(
+        model=Role, 
+        required=False, 
+        label="Rôle du VLAN"
     )
-    switch_model = ObjectVar(
-        description="Switch model",
-        model=DeviceType,
-        query_params={
-            'manufacturer_id': '$manufacturer'
-        }
-    )'''
 
     def run(self, data, commit):
+        vlan_group = data['vlan_group']
+        l2vpn = data['l2vpn']
+        vlan_role = data.get('vlan_role')
+        description = data.get('description_vlan') or ""
+        subnet = data.get('subnet')
+        mode = data['vlan_mode']
+        manual_vlan_start = data.get('manual_vlan_start')
+        tenant = l2vpn.tenant if hasattr(l2vpn, "tenant") else None
+        l2vpn_id = l2vpn.identifier  # ajuster selon champ réel, parfois .identifier, .pk, ou .id
+        vlan = None
 
-        # Create the new site
-        site = Site(
-            name=data['site_name'],
-            slug=slugify(data['site_name']),
-            status=SiteStatusChoices.STATUS_PLANNED
+        # 1. Recherche du prochain VLAN ID dispo si auto, sinon vérifie la disponibilité en manuel
+        if mode == 'auto':
+            # Cherche les VLAN IDs utilisés dans ce VLANGroup
+            used_vlans = set(VLAN.objects.filter(group=vlan_group).values_list('vid', flat=True))
+            # Plage utilisable : 2-4094 en général, ou selon ta politique
+            for vid in range(2, 4095):
+                if vid not in used_vlans:
+                    vlan_id = vid
+                    break
+            else:
+                self.log_failure("Aucun VLAN disponible dans ce groupe.")
+                return
+        else:  # mode manuel
+            vlan_id = manual_vlan_start
+            exists = VLAN.objects.filter(group=vlan_group, vid=vlan_id).exists()
+            if exists:
+                self.log_failure(f"Le VLAN {vlan_id} est déjà pris dans ce groupe.")
+                return
+
+        # 2. Création du nom VLAN selon convention
+        vlan_id_str = f"{vlan_id:04d}"
+        vlan_name = f"V_{l2vpn.name}_{vlan_id_str}"
+
+        # 3. Création du VLAN
+        vlan = VLAN(
+            name=vlan_name,
+            vid=vlan_id,
+            group=vlan_group,
+            tenant=tenant,
+            description=description,
+            role=vlan_role,
         )
-        site.full_clean()
-        site.save()
-        self.log_success(f"Created new site: {site}")
+        # Ajout custom field "vni"
+        vlan.custom_field_data = vlan.custom_field_data or {}
+        vlan.custom_field_data["vni"] = int(f"{l2vpn_id}{vlan_id_str}")
 
-        # Create access switches
-        switch_role = DeviceRole.objects.get(name='Switch')
-        for i in range(1, data['switch_count'] + 1):
-            switch = Device(
-                device_type=data['switch_model'],
-                name=f'{site.slug}-switch{i}',
-                site=site,
-                status=DeviceStatusChoices.STATUS_PLANNED,
-                role=switch_role
+        vlan.full_clean()
+        vlan.save()
+
+        self.log_success(f"VLAN {vlan_name} (ID {vlan_id}) créé dans le groupe {vlan_group.name}")
+        
+
+        # 4. Subnet : gestion création/association
+        if subnet:
+            prefix, created = Prefix.objects.get_or_create(
+                prefix=subnet,
+                defaults={
+                    "vlan": vlan,
+                    "tenant": tenant
+                }
             )
-            switch.full_clean()
-            switch.save()
-            self.log_success(f"Created new switch: {switch}")
+            if not created:
+                prefix.vlan = vlan
+                prefix.save()
+                self.log_info(f"Prefix {subnet} déjà existant, associé au VLAN.")
 
-        # Generate a CSV table of new devices
-        output = [
-            'name,make,model'
-        ]
-        for switch in Device.objects.filter(site=site):
-            attrs = [
-                switch.name,
-                switch.device_type.manufacturer.name,
-                switch.device_type.model
-            ]
-            output.append(','.join(attrs))
+                output = {
+                    "VLAN Name": vlan.name,
+                    "VLAN ID": vlan.vid,
+                    "VLAN Group": vlan.group.name,
+                    "L2VPN": l2vpn.name,
+                    "Tenant": tenant.name if tenant else None,
+                    "Role": vlan.role.name if vlan.role else None,
+                    "Description": vlan.description,
+                    "Custom VNI": vlan.custom_field_data.get("vni"),
+                    "Subnet": str(prefix.prefix),
+                    "Prefix Created": False,
+                }
+                self.log_success(f"Création terminée. Détails : {output}")
+                return output
 
-        return '\n'.join(output)
+            else:
+                self.log_success(f"Prefix {subnet} créé et associé au VLAN.")
+
+# ... tu continues avec le output final si nécessaire
+
+        output = {
+            "VLAN Name": vlan.name,
+            "VLAN ID": vlan.vid,
+            "VLAN Group": vlan.group.name,
+            "L2VPN": l2vpn.name,
+            "Tenant": tenant.name if tenant else None,
+            "Role": vlan.role.name if vlan.role else None,
+            "Description": vlan.description,
+            "Custom VNI": vlan.custom_field_data.get("vni"),
+        }
+
+        if subnet:
+            output["Subnet"] = prefix.prefix
+            output["Prefix Created"] = created
+
+        self.log_success(f"Création terminée. Détails : {output}")
+        return output
