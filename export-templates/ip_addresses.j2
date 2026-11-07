@@ -1,27 +1,16 @@
 {#-
   NetBox export template — IP addresses (IPAM > IP Addresses)
-  Columns: IP;VRF;Status;Tenant;DNS;Tags;Subnet;Subnet Tenant;Subnet Role;Subnet Site;Subnet Tags;VLAN ID;VLAN
+  Columns: IP;VRF;Status;Tenant;DNS;Tags;Subnet;Subnet Tenant;Subnet Role;Subnet Scope;Subnet Tags;VLAN ID;VLAN
   The subnet is the most specific prefix containing the IP in the same VRF;
   the VLAN is the one assigned to that prefix.
-  Subnet site: derived from the scope (Site, or the Location's site); empty when
-  the scope is a Region / Site Group. Also supports the legacy "site" field.
+  Subnet scope: name of the prefix scope (Region, Site Group, Site or Location).
+  On older NetBox versions without scopes, the legacy "site" field is used.
 -#}
-IP;VRF;Status;Tenant;DNS;Tags;Subnet;Subnet Tenant;Subnet Role;Subnet Site;Subnet Tags;VLAN ID;VLAN
+IP;VRF;Status;Tenant;DNS;Tags;Subnet;Subnet Tenant;Subnet Role;Subnet Scope;Subnet Tags;VLAN ID;VLAN
 {% for ip in queryset -%}
 {%- set prefix = ipam.Prefix.objects.filter(vrf=ip.vrf, prefix__net_contains_or_equals=ip.address.ip|string).order_by('-prefix').first() -%}
 {%- set vlan = prefix.vlan if prefix else None -%}
-{%- set ns = namespace(site=None) -%}
-{%- if prefix -%}
-  {%- if prefix.site is defined -%}
-    {%- set ns.site = prefix.site -%}
-  {%- elif prefix.scope_type and prefix.scope -%}
-    {%- if prefix.scope_type.model == 'site' -%}
-      {%- set ns.site = prefix.scope -%}
-    {%- elif prefix.scope_type.model == 'location' -%}
-      {%- set ns.site = prefix.scope.site -%}
-    {%- endif -%}
-  {%- endif -%}
-{%- endif -%}
+{%- set scope = (prefix.site if prefix.site is defined else prefix.scope) if prefix else None -%}
 {{ ip.address }};
 {{- ip.vrf.name if ip.vrf else 'Global' }};
 {{- ip.get_status_display() }};
@@ -31,7 +20,7 @@ IP;VRF;Status;Tenant;DNS;Tags;Subnet;Subnet Tenant;Subnet Role;Subnet Site;Subne
 {{- prefix.prefix if prefix else '' }};
 {{- prefix.tenant.name if prefix and prefix.tenant else '' }};
 {{- prefix.role.name if prefix and prefix.role else '' }};
-{{- ns.site.name if ns.site else '' }};
+{{- scope.name if scope else '' }};
 {{- prefix.tags.all()|join(',', attribute='name') if prefix else '' }};
 {{- vlan.vid if vlan else '' }};
 {{- vlan.name if vlan else '' }}
