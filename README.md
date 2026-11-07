@@ -9,7 +9,7 @@ Collection of my [NetBox](https://github.com/netbox-community/netbox) projects.
 ├── scripts/                    # NetBox scripts (custom scripts, signals)
 │   ├── create_vxlan_script.py  # Creates a VLAN/VNI bound to an L2VPN (+ optional subnet)
 │   ├── vxlan.py                # Provisions a VXLAN ("New VXLAN")
-│   └── naming_fr.py            # Automatic device naming (pre_save signal)
+│   └── auto_device_naming.py   # Automatic device naming (pre_save signal)
 ├── export-templates/           # NetBox export templates (Jinja2)
 │   └── ip_addresses.j2         # CSV export of IP addresses
 └── README.md
@@ -25,7 +25,7 @@ More directories can be added at the root for future projects
 NetBox custom scripts (`extras.scripts.Script`). Place them in NetBox's
 `SCRIPTS_ROOT` directory or upload them via *Customization → Scripts*.
 
-### `naming_fr.py`
+### `auto_device_naming.py`
 
 Automatically generates a device (`Device`) name on creation when none is set,
 using the format:
