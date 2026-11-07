@@ -5,11 +5,14 @@ from dcim.models import Device
 @receiver(pre_save, sender=Device)
 def auto_generate_device_name(sender, instance, **kwargs):
     if not instance.name:
-        tenant_gr_slug = instance.tenant.group.slug if instance.tenant and instance.tenant.group else 'notenantgroup'
-        tenant_slug = instance.tenant.slug if instance.tenant else 'notenant'
-        site_slug = instance.site.slug if instance.site else 'nosite'
-        role_slug = instance.device_role.slug if instance.device_role else 'norole'
-        base_name = f"{tenant_gr_slug}-{site_slug}-{tenant_slug}-{role_slug}"
+        site = instance.site
+        region_slug = site.region.slug if site and site.region else 'noregion'
+        site_slug = site.slug if site else 'nosite'
+        location_slug = instance.location.slug if instance.location else 'nolocation'
+        # NetBox >= 3.6 utilise "role", les versions antérieures "device_role"
+        role = getattr(instance, 'role', None) or getattr(instance, 'device_role', None)
+        role_slug = role.slug if role else 'norole'
+        base_name = f"{region_slug}-{site_slug}-{location_slug}-{role_slug}"
 
         if role_slug == 'patch-panel' and instance.rack and instance.position:
             rack = instance.rack.name
