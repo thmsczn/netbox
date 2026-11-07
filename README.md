@@ -1,77 +1,78 @@
 # netbox
 
-Dépôt regroupant l'ensemble de mes projets autour de [NetBox](https://github.com/netbox-community/netbox).
+Collection of my [NetBox](https://github.com/netbox-community/netbox) projects.
 
 ## Structure
 
 ```
 .
-├── scripts/                    # Scripts NetBox (custom scripts, signaux)
-│   ├── create_vxlan_script.py  # Création d'un VLAN/VNI associé à un L2VPN (+ subnet optionnel)
-│   ├── vxlan.py                # Provisionnement d'un VXLAN (« New VXLAN »)
-│   └── naming_fr.py            # Nommage automatique des équipements (signal pre_save)
-├── export-templates/           # Export templates NetBox (Jinja2)
-│   └── ip_addresses.j2         # Export CSV des adresses IP
+├── scripts/                    # NetBox scripts (custom scripts, signals)
+│   ├── create_vxlan_script.py  # Creates a VLAN/VNI bound to an L2VPN (+ optional subnet)
+│   ├── vxlan.py                # Provisions a VXLAN ("New VXLAN")
+│   └── naming_fr.py            # Automatic device naming (pre_save signal)
+├── export-templates/           # NetBox export templates (Jinja2)
+│   └── ip_addresses.j2         # CSV export of IP addresses
 └── README.md
 ```
 
-D'autres répertoires pourront être ajoutés à la racine pour les futurs projets
-(ex. `reports/`, `plugins/`, `ansible/`…).
+More directories can be added at the root for future projects
+(e.g. `reports/`, `plugins/`, `ansible/`…).
 
 ## Scripts
 
 ### `create_vxlan_script.py` / `vxlan.py`
 
-Custom scripts NetBox (`extras.scripts.Script`) à déposer dans le répertoire
-`SCRIPTS_ROOT` de NetBox ou à importer via *Customization → Scripts*.
+NetBox custom scripts (`extras.scripts.Script`). Place them in NetBox's
+`SCRIPTS_ROOT` directory or upload them via *Customization → Scripts*.
 
 ### `naming_fr.py`
 
-Génère automatiquement le nom d'un équipement (`Device`) à sa création s'il n'est
-pas renseigné, au format :
+Automatically generates a device (`Device`) name on creation when none is set,
+using the format:
 
 ```
 <region>-<site>-<location>-<role>-NN
 ```
 
-(slugs des objets ; `noregion`, `nosite`, `nolocation`, `norole` si absents).
-Pour les patch panels placés dans une baie : `<base>-<rack>-<position>`.
+(object slugs; `noregion`, `nosite`, `nolocation`, `norole` when missing).
+For patch panels mounted in a rack: `<base>-<rack>-<position>`.
 
-Le receiver `pre_save` est enregistré à l'import du module : celui-ci doit donc
-être chargé par NetBox (par exemple depuis `SCRIPTS_ROOT`).
+The `pre_save` receiver is registered when the module is imported, so NetBox
+must load it (for example from `SCRIPTS_ROOT`).
 
 ## Export templates
 
 ### `ip_addresses.j2`
 
-Export CSV (séparateur `;`, s'ouvre directement dans Excel FR) des adresses IP :
+CSV export of IP addresses (`;` delimiter, opens directly in Excel with
+European locale settings):
 
-| Colonne | Source |
+| Column | Source |
 |---|---|
-| IP | adresse avec masque |
-| VRF | nom de la VRF (`Global` si aucune) |
-| Status | statut de l'IP |
-| Tenant | tenant de l'IP |
-| DNS | `dns_name` de l'IP |
-| Tags | tags de l'IP, séparés par `,` |
-| Subnet | préfixe le plus spécifique contenant l'IP dans la même VRF |
-| Subnet Tenant | tenant du subnet |
-| Subnet Role | rôle du subnet |
-| Subnet Site | site du subnet (scope Site, ou site de la Location ; vide si scope Region / Site Group) |
-| Subnet Tags | tags du subnet, séparés par `,` |
-| VLAN ID / VLAN | VLAN associé à ce préfixe |
+| IP | address with mask |
+| VRF | VRF name (`Global` when none) |
+| Status | IP status |
+| Tenant | IP tenant |
+| DNS | IP `dns_name` |
+| Tags | IP tags, comma-separated |
+| Subnet | most specific prefix containing the IP in the same VRF |
+| Subnet Tenant | subnet tenant |
+| Subnet Role | subnet role |
+| Subnet Site | subnet site (Site scope, or the Location's site; empty for a Region / Site Group scope) |
+| Subnet Tags | subnet tags, comma-separated |
+| VLAN ID / VLAN | VLAN assigned to that prefix |
 
-Création dans NetBox : *Customization → Export Templates → Add*
+Setup in NetBox: *Customization → Export Templates → Add*
 
-- **Object types** : `IPAM > IP Address`
-- **Template code** : contenu de `export-templates/ip_addresses.j2`
-  (ou synchronisation via une *Data Source* pointant sur ce dépôt)
-- **MIME type** : `text/csv`
-- **File extension** : `csv`
-- **As attachment** : coché
+- **Object types**: `IPAM > IP Address`
+- **Template code**: contents of `export-templates/ip_addresses.j2`
+  (or sync it through a *Data Source* pointing at this repository)
+- **MIME type**: `text/csv`
+- **File extension**: `csv`
+- **As attachment**: checked
 
-Utilisation : *IPAM → IP Addresses → Export →* nom du template (le filtre courant
-de la liste est appliqué).
+Usage: *IPAM → IP Addresses → Export →* template name (the current list filter
+is applied).
 
-> Nécessite une version de NetBox exposant les modèles dans le contexte des
-> templates (accès à `ipam.Prefix`), c'est le cas des versions 4.x récentes.
+> Requires a NetBox version that exposes models in the template context
+> (access to `ipam.Prefix`), which is the case for recent 4.x releases.

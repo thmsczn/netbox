@@ -9,7 +9,7 @@ def auto_generate_device_name(sender, instance, **kwargs):
         region_slug = site.region.slug if site and site.region else 'noregion'
         site_slug = site.slug if site else 'nosite'
         location_slug = instance.location.slug if instance.location else 'nolocation'
-        # NetBox >= 3.6 utilise "role", les versions antérieures "device_role"
+        # NetBox >= 3.6 uses "role", earlier versions use "device_role"
         role = getattr(instance, 'role', None) or getattr(instance, 'device_role', None)
         role_slug = role.slug if role else 'norole'
         base_name = f"{region_slug}-{site_slug}-{location_slug}-{role_slug}"

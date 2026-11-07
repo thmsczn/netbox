@@ -5,11 +5,11 @@ __pycache__/
 .venv/
 venv/
 
-# Environnement / secrets
+# Environment / secrets
 .env
 *.local
 
-# Éditeurs / OS
+# Editors / OS
 .vscode/
 .idea/
 .DS_Store

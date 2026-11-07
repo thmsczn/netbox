@@ -1,10 +1,10 @@
 {#-
-  Export template NetBox — Adresses IP (IPAM > IP Addresses)
-  Colonnes : IP;VRF;Status;Tenant;DNS;Tags;Subnet;Subnet Tenant;Subnet Role;Subnet Site;Subnet Tags;VLAN ID;VLAN
-  Le subnet est le préfixe le plus spécifique contenant l'IP dans la même VRF,
-  le VLAN est celui associé à ce préfixe.
-  Site du subnet : déduit du scope (Site, ou site de la Location) ; vide si le
-  scope est une Region / un Site Group. Compatible avec l'ancien champ "site".
+  NetBox export template — IP addresses (IPAM > IP Addresses)
+  Columns: IP;VRF;Status;Tenant;DNS;Tags;Subnet;Subnet Tenant;Subnet Role;Subnet Site;Subnet Tags;VLAN ID;VLAN
+  The subnet is the most specific prefix containing the IP in the same VRF;
+  the VLAN is the one assigned to that prefix.
+  Subnet site: derived from the scope (Site, or the Location's site); empty when
+  the scope is a Region / Site Group. Also supports the legacy "site" field.
 -#}
 IP;VRF;Status;Tenant;DNS;Tags;Subnet;Subnet Tenant;Subnet Role;Subnet Site;Subnet Tags;VLAN ID;VLAN
 {% for ip in queryset -%}
