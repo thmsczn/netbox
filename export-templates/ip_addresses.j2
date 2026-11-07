@@ -4,13 +4,12 @@
   The subnet is the most specific prefix containing the IP in the same VRF;
   the VLAN is the one assigned to that prefix.
   Subnet scope: name of the prefix scope (Region, Site Group, Site or Location).
-  On older NetBox versions without scopes, the legacy "site" field is used.
 -#}
 IP;VRF;Status;Tenant;DNS;Tags;Subnet;Subnet Tenant;Subnet Role;Subnet Scope;Subnet Tags;VLAN ID;VLAN
 {% for ip in queryset -%}
 {%- set prefix = ipam.Prefix.objects.filter(vrf=ip.vrf, prefix__net_contains_or_equals=ip.address.ip|string).order_by('-prefix').first() -%}
 {%- set vlan = prefix.vlan if prefix else None -%}
-{%- set scope = (prefix.site if prefix.site is defined else prefix.scope) if prefix else None -%}
+{%- set scope = prefix.scope if prefix else None -%}
 {{ ip.address }};
 {{- ip.vrf.name if ip.vrf else 'Global' }};
 {{- ip.get_status_display() }};
