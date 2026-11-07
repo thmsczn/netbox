@@ -58,7 +58,7 @@ European locale settings):
 | Subnet | most specific prefix containing the IP in the same VRF |
 | Subnet Tenant | subnet tenant |
 | Subnet Role | subnet role |
-| Subnet Site | subnet site (Site scope, or the Location's site; empty for a Region / Site Group scope) |
+| Subnet Scope | subnet scope name (Region, Site Group, Site or Location) |
 | Subnet Tags | subnet tags, comma-separated |
 | VLAN ID / VLAN | VLAN assigned to that prefix |
 
