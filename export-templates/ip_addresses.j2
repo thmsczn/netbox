@@ -1,0 +1,20 @@
+{#-
+  Export template NetBox — Adresses IP (IPAM > IP Addresses)
+  Colonnes : IP;VRF;Status;Tenant;DNS;Tags;Subnet;VLAN ID;VLAN
+  Le subnet est le préfixe le plus spécifique contenant l'IP dans la même VRF,
+  le VLAN est celui associé à ce préfixe.
+-#}
+IP;VRF;Status;Tenant;DNS;Tags;Subnet;VLAN ID;VLAN
+{% for ip in queryset -%}
+{%- set prefix = ipam.Prefix.objects.filter(vrf=ip.vrf, prefix__net_contains_or_equals=ip.address.ip|string).order_by('-prefix').first() -%}
+{%- set vlan = prefix.vlan if prefix else None -%}
+{{ ip.address }};
+{{- ip.vrf.name if ip.vrf else 'Global' }};
+{{- ip.get_status_display() }};
+{{- ip.tenant.name if ip.tenant else '' }};
+{{- ip.dns_name or '' }};
+{{- ip.tags.all()|join(',', attribute='name') }};
+{{- prefix.prefix if prefix else '' }};
+{{- vlan.vid if vlan else '' }};
+{{- vlan.name if vlan else '' }}
+{% endfor -%}
