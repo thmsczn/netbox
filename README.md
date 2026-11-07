@@ -55,6 +55,10 @@ Export CSV (séparateur `;`, s'ouvre directement dans Excel FR) des adresses IP 
 | DNS | `dns_name` de l'IP |
 | Tags | tags de l'IP, séparés par `,` |
 | Subnet | préfixe le plus spécifique contenant l'IP dans la même VRF |
+| Subnet Tenant | tenant du subnet |
+| Subnet Role | rôle du subnet |
+| Subnet Site | site du subnet (scope Site, ou site de la Location ; vide si scope Region / Site Group) |
+| Subnet Tags | tags du subnet, séparés par `,` |
 | VLAN ID / VLAN | VLAN associé à ce préfixe |
 
 Création dans NetBox : *Customization → Export Templates → Add*
